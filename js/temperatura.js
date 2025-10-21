@@ -1,37 +1,77 @@
-const tempData = [
-  { fecha: "2025-10-16 10:00", valor: 24.5 },
-  { fecha: "2025-10-16 09:45", valor: 24.3 },
-  { fecha: "2025-10-16 09:30", valor: 24.1 },
-  { fecha: "2025-10-16 09:15", valor: 24.0 },
-  { fecha: "2025-10-16 09:00", valor: 23.8 }
-];
+// js/temperatura.js
+const API_URL = '/api/api_lectura.php'; // RUTA DE TU API DE PHP
 
-const tempCtx = document.getElementById('tempChart').getContext('2d');
-new Chart(tempCtx, {
-  type: 'line',
-  data: {
-    labels: tempData.map(d => d.fecha),
-    datasets: [{
-      label: 'Temperatura (°C)',
-      data: tempData.map(d => d.valor),
-      borderColor: '#dc3545',
-      backgroundColor: 'rgba(220,53,69,0.2)',
-      fill: true,
-      tension: 0.3
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: {
-      y: { min: 0, max: 50 }
-    }
-  }
-});
+function llenarTablaHistorial(data) {
+    const tbody = document.getElementById('temperatura-history-body');
+    if (!tbody) return;
 
-const tempTbody = document.getElementById('tempTable');
-tempTbody.innerHTML = tempData.map(d => `
-  <tr>
-    <td>${d.fecha}</td>
-    <td>${d.valor}</td>
-  </tr>
-`).join('');
+    // Limpiar contenido anterior
+    tbody.innerHTML = ''; 
+
+    // Mostrar datos del más nuevo al más antiguo para el historial
+    const reversedData = [...data].reverse();
+
+    reversedData.forEach(item => {
+        const row = tbody.insertRow();
+        const cellDate = row.insertCell();
+        const cellTemperatura = row.insertCell();
+
+        cellDate.textContent = item.timestamp.replace(' ', ' '); 
+        cellTemperatura.textContent = parseFloat(item.temperatura).toFixed(2);
+    });
+}
+
+function cargarDatosYGraficarTemperatura() {
+    fetch(API_URL)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al conectar con la API: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.length === 0) {
+                document.getElementById('graficaTemperatura').textContent = 'No hay datos de temperatura disponibles.';
+                return;
+            }
+
+            // Llenar la tabla de historial
+            llenarTablaHistorial(data);
+
+            // Preparar datos para la Gráfica
+            const timestamps = data.map(item => item.timestamp);
+            const temperaturas = data.map(item => parseFloat(item.temperatura));
+            
+            const ctx = document.getElementById('graficaTemperatura').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps, 
+                    datasets: [{
+                        label: 'Temperatura (°C)',
+                        data: temperaturas,
+                        borderColor: 'rgb(255, 99, 132)', // Rojo
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { 
+                            beginAtZero: false,
+                            title: { display: true, text: 'Temperatura (°C)' } 
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error al cargar datos de temperatura:', error);
+            document.getElementById('graficaTemperatura').textContent = 'Error al cargar los datos: ' + error.message;
+        });
+}
+
+document.addEventListener('DOMContentLoaded', cargarDatosYGraficarTemperatura);
