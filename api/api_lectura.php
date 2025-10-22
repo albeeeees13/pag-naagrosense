@@ -1,28 +1,58 @@
 <?php
-// --- LÍNEAS TEMPORALES PARA DEPURACIÓN DE PHP ---
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-// ---------------------------------------------------
+ini_set('display_errors', 1);
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 
-// ¡REVISA Y REEMPLAZA ESTOS VALORES!
-define('DB_SERVER', 'localhost');             
-define('DB_USERNAME', 'root');                
-define('DB_PASSWORD', '');                    
-define('DB_NAME', 'tu_nombre_de_base_de_datos'); 
-define('TABLE_NAME', 'lecturas_sensores'); 
+// Configuración de base de datos
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "agrosense_db";
 
-// Si usaste el puerto 3307, cámbialo aquí:
-// define('DB_SERVER', 'localhost:3307');
+// Crear conexión
+$conn = new mysqli($servername, $username, $password, $dbname);
 
-// Conexión a la base de datos
-$conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
-
-// Verificar la conexión
+// Verificar conexión
 if ($conn->connect_error) {
-    // ESTE BLOQUE AHORA MOSTRARÁ EL ERROR ESPECÍFICO DE MYSQL
-    die("❌ FATAL ERROR: Conexión fallida. Revisar credenciales o puerto. Mensaje: " . $conn->connect_error);
+    echo json_encode([
+        'error' => true,
+        'mensaje' => 'Error de conexión: ' . $conn->connect_error
+    ]);
+    exit();
 }
 
-$conn->set_charset("utf8mb4"); 
+// Consulta SQL
+$sql = "SELECT * FROM lecturas_sensores ORDER BY timestamp DESC LIMIT 10";
+$result = $conn->query($sql);
+
+if (!$result) {
+    echo json_encode([
+        'error' => true,
+        'mensaje' => 'Error en la consulta: ' . $conn->error
+    ]);
+    exit();
+}
+
+// Preparar respuesta
+$response = [];
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        $response[] = $row;
+    }
+    echo json_encode([
+        'error' => false,
+        'datos' => $response,
+        'total' => $result->num_rows
+    ]);
+} else {
+    echo json_encode([
+        'error' => false,
+        'mensaje' => 'No hay datos en la tabla',
+        'datos' => []
+    ]);
+}
+
+$conn->close();
 ?>
